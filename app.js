@@ -15,9 +15,11 @@ const rl = readline.createInterface({
 
 class Help {
     constructor() {
-
-        this.colWidths = [15, 15, 15, 15];
+        this.arr = ['Fire', 'Water', 'Air', 'Sponge'];
+        this.colWidths = [15, 10, 10, 10];
         this.newTable();
+        this.game = new Game();
+        this.results = new Results();
     }
 
     newTable() {
@@ -32,52 +34,51 @@ class Help {
         );
     }
 
-    display() {
-        console.log(this.table.toString());
-    }
+    updateTable() {
+        const newItem = this.arr[this.table.length - 4];
+        this.colWidths.push(10);
+
+        this.table[0].push(newItem);
+
+        
+        for (let i = 1; i < this.table.length; i++) {  // add column
+            const user = this.table[i][0];
+            const result = this.results.result(this.game.getMoveId(newItem), this.game.getMoveId(user));
+            this.table[i].push(this.getResultText(result));
+        }
+
+        const newRow = [newItem];
+        for (let i = 1; i < this.table.length; i++) {    //add row      
+            const pc = this.table[0][i];
+            const result = this.results.result(this.game.getMoveId(pc), this.game.getMoveId(newItem));
+            newRow.push(this.getResultText(result));
+        }
 
 
+        newRow.push('Draw');  
+        this.table.push(newRow);
+    }
 
-    updateColumnWidth(widths) {
-        this.colWidths = widths;
-        this.newTable();
-    }
-    addRow(row) {
-        this.table.push(row);
-    }
-    addColumn(column) {
-        for (let i = 0; i < this.table.length; i++) {
-            this.table[i].push(column[i]);
+    getResultText(result) {
+        if (result == 0) { return 'Win'; }
+        if (result == 1) { return 'Lose'; }
+        else {
+            return 'Draw';
         }
     }
 
-    addFire() {
-        //this.updateColumnWidth([15, 15, 15, 15, 15]);
-        this.addRow(['Fire', 'Win', 'Lose', 'Lose']);
-        this.addColumn(['Fire', 'Lose', 'Win', 'Win', 'Draw']);
+    cleaningTable() {
+        this.colWidths = [15, 10, 10, 10];
+        this.newTable();
+        for (let i = 3; i < gameIndex; i++) {
+            this.updateTable();
+        }
     }
 
-    addWater() {
-        //this.updateColumnWidth([15, 15, 15, 15, 15, 15]);
-        this.addFire();
-        this.addRow(['Water', 'Lose', 'Lose', 'Win', 'Lose']);
-        this.addColumn(['Water', 'Win', 'Win', 'Lose', 'Win', 'Draw']);
+    display() {
+        console.log(this.table.toString());
     }
-    addAir() {
-        //this.addFire();
-        this.addWater();
-        //this.updateColumnWidth([15, 10, 10, 10, 10, 10, 10]);
-        this.addRow(['Air', 'Lose', 'Win', 'Win', 'Lose', 'Lose']);
-        this.addColumn(['Air', 'Win', 'Lose', 'Lose', 'Win', 'Win', 'Draw']);
-    }
-    addSponge() {
-        //this.addFire();
-        //this.addWater();
-        this.addAir();
-        //this.updateColumnWidth([15, 10, 10, 10, 10, 10, 10, 10]);
-        this.addRow(['Sponge', 'Win', 'Win', 'Lose', 'Win', 'Lose', 'Lose']);
-        this.addColumn(['Sponge', 'Lose', 'Lose', 'Win', 'Lose', 'Win', 'Win', 'Draw']);
-    }
+    
 }
 
 class Game {
@@ -89,6 +90,7 @@ class Game {
     async play() {
         //let pcMove; let key; let hash;
         const { pcMove, key, hash } = this.pcMoveHash.getPcMove();
+
         console.log(`\nComputer move hash: ${hash}\n`);
 
         const playerChoice = await this.getPlayerMove();
@@ -148,8 +150,13 @@ class Game {
         }
         console.log(`You made a move with ${playerMove}\n`)
         console.log(`Computer made a move with ${pcMove}\n`);
-        const result = this.gameResults.result(playerMove, pcMove);
-        console.log(`${result}\n`);
+        let playerMoveId = this.getMoveId(playerMove);
+        let pcMoveId = this.getMoveId(pcMove);
+        const result = this.gameResults.result(playerMoveId, pcMoveId);
+        if (result == 2) { console.log("It's draw\n"); }
+        else if (result == 0) { console.log("You win!\n"); }
+        else if (result == 1) { console.log("You lose!\n"); }
+        //console.log(`${result}\n`);
         console.log(`Computer move key: ${key}\n`);
         //gameRunning = false;
     }
@@ -176,44 +183,34 @@ class Game {
                 });
             });
     }
+
+    getMoveId(move) {
+        let id = 0;
+        if (move == 'Rock') { id = 1; }
+        else if (move == 'Scissors') { id = 3; }
+        else if (move == 'Paper') { id = 5; }
+        else if (move == 'Fire') { id = 2; }
+        else if (move == 'Water') { id = 7; }
+        else if (move == 'Air') { id = 6; }
+        else if (move == 'Sponge') { id = 4; }
+        return id;
+    }
 }
 
 class Results {
-    constructor() {
-        this.createStruct();
-        
-    }
-    createStruct() {
-        this.resultStruct = {
-            Rock: { win: ['Scissors'] },
-            Scissors: { win: ['Paper'] },
-            Paper: { win: ['Rock'] }
-        };
+    constructor() { 
     }
 
-    updateStruct(newParam, winList, loseList) {
-        this.resultStruct[newParam] = { win: winList };
-
-        for (let i in this.resultStruct) {
-            if (loseList.includes(i)) {
-                this.resultStruct[i].win.push(newParam);
-            }
-        }
-
-        /*for (let i = 0; i < this.resultStruct.length; i++) {
-            if (loseList.includes(this.resultStruct[i])) {
-                this.resultStruct[i].win.push(newParam);
-            }
-        }*/
-    }
-
-    result(playerMove, pcMove) {
-        if (playerMove == pcMove) { return "It's draw!"; }
-        else if (this.resultStruct[playerMove].win.includes(pcMove)) {
-            return "You win!";
+    result(playerMoveId, pcMoveId) {
+        if (playerMoveId == pcMoveId) { return 2; }  // draw
+        if ((playerMoveId + 3) > 7 && (pcMoveId - 3) < 1) {   // if max param 7 then +-3, if 9 then +-4, if 11 then +-5 and ect
+            pcMoveId += 7;  // max param 7
+        } 
+        if (pcMoveId > playerMoveId && pcMoveId <= playerMoveId + 3) {
+            return 0;  // win
         }
         else {
-            return "You lose!";
+            return 1; // lose
         }
     }
 }
@@ -270,75 +267,26 @@ class Menu {
                 break;
             case '2':
                 help.display();
+                //help.updateTable();
                 break;
             case '3':
-                if (gameIndex == 7) {
+                if (gameIndex < 7) {
+                    help.updateTable();
+                    gameIndex++;
+                }
+                else {
                     console.log("\nMax number of parametrs reached\n");
                     break;
                 }
-                if (gameIndex == 3) {
-                    /*help.updateColumnWidth([15, 15, 15, 15, 15]);
-                    help.addRow(['Fire', 'Win', 'Lose', 'Lose']);
-                    help.addColumn(['Fire', 'Lose', 'Win', 'Win', 'Draw']);*/
-                    help.updateColumnWidth([15, 15, 15, 15, 15]);
-                    help.addFire();
-
-                    results.updateStruct('Fire', ['Scissors', 'Paper'], ['Rock']);
-                    gameIndex++;
-                } else if (gameIndex == 4) {
-                    help.updateColumnWidth([15, 15, 15, 15, 15, 15]);
-                    help.addWater();
-
-                    results.updateStruct('Water', ['Rock', 'Scissors', 'Fire'], ['Paper']);
-                    gameIndex++;
-                } else if (gameIndex == 5) {
-                    help.updateColumnWidth([15, 10, 10, 10, 10, 10, 10]);
-                    help.addAir();
-
-                    results.updateStruct('Air', ['Rock', 'Fire', 'Water'], ['Scissors', 'Paper']);
-                    gameIndex++;
-                } else if (gameIndex == 6) {
-                    help.updateColumnWidth([15, 10, 10, 10, 10, 10, 10, 10]);
-                    help.addSponge();
-
-                    results.updateStruct('Sponge', ['Paper', 'Water', 'Air'], ['Rock', 'Scissors', 'Fire']);
-                    gameIndex++;
-                }
                 break;
             case '4':
-                if (gameIndex == 3) {
+                if (gameIndex > 3) {
+                    gameIndex--;
+                    help.cleaningTable();
+                }
+                else {
                     console.log("\nMin number of parametrs reached\n");
                     break;
-                }
-                if (gameIndex == 4) {
-                    help.updateColumnWidth([15, 15, 15, 15]);
-
-                    results.createStruct();
-                    gameIndex--;
-                } else if (gameIndex == 5) {
-                    help.updateColumnWidth([15, 15, 15, 15, 15]);
-                    help.addFire();
-
-                    results.createStruct();
-                    results.updateStruct('Fire', ['Scissors', 'Paper'], ['Rock']);
-                    gameIndex--;
-                } else if (gameIndex == 6) {
-                    help.updateColumnWidth([15, 15, 15, 15, 15, 15]);
-                    help.addWater();
-
-                    results.createStruct();
-                    results.updateStruct('Fire', ['Scissors', 'Paper'], ['Rock']);
-                    results.updateStruct('Water', ['Rock', 'Scissors', 'Fire'], ['Paper']);
-                    gameIndex--;
-                } else if (gameIndex == 7) {
-                    help.updateColumnWidth([15, 10, 10, 10, 10, 10, 10]);
-                    help.addAir();
-
-                    results.createStruct();
-                    results.updateStruct('Fire', ['Scissors', 'Paper'], ['Rock']);
-                    results.updateStruct('Water', ['Rock', 'Scissors', 'Fire'], ['Paper']);
-                    results.updateStruct('Air', ['Rock', 'Fire', 'Water'], ['Scissors', 'Paper']);
-                    gameIndex--;
                 }
                 break;
             case '0':
@@ -356,53 +304,3 @@ class Menu {
     process.exit(0);
 })();
 
-/*const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-function selectOption(menu) {
-    if (gameRunning == false) {
-        return new Promise(result => rl.question(menu, result));
-    }
-}
-
-async function main() {
-    const help = new Help();
-    const game = new Game();
-
-    let a = 0;
-
-    while (a == 0) {
-        *//*if (gameRunning == false) {
-
-        }*//*
-        const option = await selectOption('\nSelect option:\n 1) Play\n 2) Help\n 0) Exit\n'); 
-        if (option.length == 0) {
-            //console.log("empty request, try again\n");
-            option = 'fdf'; 
-        }
-        switch (option) {
-            case '1':
-                gameRunning = true;
-                await game.play();
-                //gameRunning = false;
-                break;
-            case '2':
-                help.display();
-                break;
-            case '0':
-                console.log("Goodbye!\n");
-                a = 1;
-                //process.exit(1);
-                break;
-            default:
-                console.log("Unknown option\n");
-                break;
-        }
-    }
-    rl.close();
-    process.exit(1);
-}
-
-main();*/
