@@ -19,14 +19,15 @@ const rl = readline.createInterface({
 
 class Help {
     constructor(array) {
-        this.arr = array;
+        this.items = array;
         this.colWidths = [15];
-        this.resultCl = new Results(this.arr);
-        this.game = new Game(this.arr)
+        this.resultCl = new Results(this.items);
+        this.game = new Game(this.items)
         this.newTable();
     }
 
     newTable() {
+        if (this.items.length < 4) return;
         this.table = new Table({
             colWidths: this.colWidths
         });
@@ -38,12 +39,12 @@ class Help {
     updateTable() {
 
         if (this.table.length < 1) {
-            const buff = [this.arr[this.table.length]];
+            const buff = [this.items[this.table.length]];
             this.table.push(buff);
-            const newItem = this.arr[this.table.length];
+            const newItem = this.items[this.table.length];
             this.colWidths.push(10);
             this.table[0].push(newItem);
-            const buf = [this.arr[this.table.length]];
+            const buf = [this.items[this.table.length]];
             this.table.push(buf);
             for (let i = 1; i < this.table.length; i++) {  // add first item
                 const user = this.table[i][0];
@@ -52,7 +53,7 @@ class Help {
             }
         }
         
-        const newItem = this.arr[this.table.length];
+        const newItem = this.items[this.table.length];
         this.colWidths.push(10);
 
         this.table[0].push(newItem);
@@ -135,17 +136,10 @@ class Game {
     }
 
     getPlayerMove() {
-        /*const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });*/
-        let quest = 'Select move:\n 1) Rock\n 2) Scissors\n 3) Paper\n';
-        //let arr = ['Fire', 'Water', 'Air', 'Sponge'];
-        if (gameIndex > 3) {
-            for (let i = 3; i < gameIndex; i++) {
-                quest += ` ${i+1}) ${this.items[i+1]}\n`;
-            }
-        } 
+        let quest = 'Select move:\n'; /*1) Rock\n 2) Scissors\n 3) Paper\n';*/
+        for (let i = 0; i < gameIndex; i++) {
+            quest += ` ${i + 1}) ${this.items[i + 1]}\n`;
+        }
         return new Promise(
             (result) =>
             {
@@ -162,7 +156,7 @@ class Game {
         
         let { N, G } = this.gameResults.calculate();
         N = this.items.length - 1;
-        G--;
+        if (G > 2) { G--; }
         let j = 1, b = 1;
         for (let i = 1; i <= N; i++) {
             if (move == this.items[i]) {
@@ -233,19 +227,11 @@ class Menu {
         console.log('Select option:\n 1) Play\n 2) Help\n 3) Add parameter\n 4) Delete parameter\n 5) Add custom parameter\n 0) Exit\n');
     }
 
-    getOption() {
+    getAnswer(quest) {
         return new Promise((option) =>
         {
-            rl.question('Choose an option: ', (choice) =>
+            rl.question(`${quest}`/*'Choose an option: '*/, (choice) =>
             {
-                //rl.close();
-                option(choice);
-            });
-        });
-    }
-    addCustomParam() {
-        return new Promise((option) => {
-            rl.question('Enter new item: ', (choice) => {
                 //rl.close();
                 option(choice);
             });
@@ -254,33 +240,60 @@ class Menu {
 }
 
 (async () => {
-    const items = ['PC / User', 'Rock', 'Scissors', 'Paper', 'Fire', 'Water', 'Air', 'Sponge'/*, 'car', 'tree'*/];
-
+    const items = [];
     const menu = new Menu();
     const help = new Help(items);
     const game = new Game(items);
 
+    let questOption = 'Choose an option: ', questItem = 'Enter new item: ', questQuant = 'Enter the number of items: ';
     let a = 0;
 
+    if (items.length == 0) {
+        items.push('PC / User');
+        const n = await menu.getAnswer(questQuant);
+        for (let i = 1; i <= n; i++) {
+            const newItem = await menu.getAnswer(questItem);
+            items.push(newItem);
+        }
+        if (items.length >= 4) {
+            help.changeTable();
+        }
+    }
+
     while (a == 0) {
+
         menu.display();
-        const option = await menu.getOption();
+        const option = await menu.getAnswer(questOption);
 
         switch (option) {
             case '1':
-                //gameRunning = true;
-                await game.play();
-                //gameRunning = false;
+                if (items.length < 4) {
+                    console.log("\nInsufficient number of items\n");
+                    break;
+                }
+                else {
+                    //gameRunning = true;
+                    await game.play();
+                    //gameRunning = false;
+                }
                 break;
             case '2':
-                help.display();
-                //help.updateTable();
+                if (items.length < 4) {
+                    console.log("\nInsufficient number of items\n");
+                    break;
+                }
+                else {
+                    help.display();
+                    //help.updateTable();
+                }
                 break;
             case '3':
                 if (gameIndex < (items.length - 1)) {
                     gameIndex++;
                     help.changeTable();
                 }
+                //else if ((items.length - 1) == 3) { help.changeTable(); }
+                else if ((items.length - 1) < 3) { console.log("\nInsufficient number of items\n"); }
                 else {
                     console.log("\nMax number of parametrs reached\n");
                     break;
@@ -297,8 +310,12 @@ class Menu {
                 }
                 break;
             case '5':
-                const newItem = await menu.addCustomParam();
+                const newItem = await menu.getAnswer(questItem);
+                //let a = 0;
                 items.push(newItem);
+                if (items.length == 4) {
+                    help.changeTable();
+                }
                 //help.updateTable();
                 //gameIndex++;
                 break;
@@ -316,4 +333,7 @@ class Menu {
     rl.close();
     process.exit(0);
 })();
+
+
+/*'PC / User', 'Rock', 'Scissors'/*, 'Paper'/*, 'Fire', 'Water', 'Air', 'Sponge', 'car', 'tree'*/
 
