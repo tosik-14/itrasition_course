@@ -1,4 +1,4 @@
-// version 3
+// version 5
 
 const readline = require('readline');
 const crypto = require('crypto');  
@@ -8,7 +8,7 @@ const Table = require('cli-table');
 
 
 
-let gameIndex = 3;
+let gameIndex = 0;
 
 
 const rl = readline.createInterface({
@@ -68,7 +68,7 @@ class Help {
         const newRow = [newItem];
         for (let i = 1; i < this.table.length; i++) {    //add row      
             const pc = this.table[0][i];
-            const result = this.resultCl.result(this.game.getMoveId(pc), this.game.getMoveId(newItem)); // ïî÷åìó îí áëÿòü íå âèäèò ìåòîä result èç êàññà Rusults???
+            const result = this.resultCl.result(this.game.getMoveId(pc), this.game.getMoveId(newItem)); // Ð¿Ð¾Ñ‡ÐµÐ¼Ñƒ Ð¾Ð½ Ð±Ð»ÑÑ‚ÑŒ Ð½Ðµ Ð²Ð¸Ð´Ð¸Ñ‚ Ð¼ÐµÑ‚Ð¾Ð´ result Ð¸Ð· ÐºÐ°ÑÑÐ° Rusults???
             newRow.push(this.getResultText(result));
         }
         
@@ -107,20 +107,11 @@ class Game {
         this.gameResults = new Results(this.items);
     }
 
-    async play() {
+    async play(playerMove) {
         //let pcMove; let key; let hash;
         const { pcMove, key, hash } = this.pcMoveHash.getPcMove();
 
         console.log(`\nComputer move hash: ${hash}\n`);
-
-        const playerChoice = await this.getPlayerMove();
-        let playerMove;
-        //if (playerMove != 1 || playerMove != 2 || playerMove != 3) { console.Log("Incorrect move, try again"); return; }
-        if (playerChoice > gameIndex || playerChoice < 1) {
-            console.log("Unknown move, try again\n");
-            return;
-        }
-        playerMove = this.items[playerChoice];
         
         console.log(`You made a move with ${playerMove}\n`)
         console.log(`Computer made a move with ${pcMove}\n`);
@@ -133,22 +124,6 @@ class Game {
         //console.log(`${result}\n`);
         console.log(`Computer move key: ${key}\n`);
         //gameRunning = false;
-    }
-
-    getPlayerMove() {
-        let quest = 'Select move:\n'; /*1) Rock\n 2) Scissors\n 3) Paper\n';*/
-        for (let i = 0; i < gameIndex; i++) {
-            quest += ` ${i + 1}) ${this.items[i + 1]}\n`;
-        }
-        return new Promise(
-            (result) =>
-            {
-                rl.question(quest, (move) =>
-                {
-                    //rl.close;
-                    result(move);
-                });
-            });
     }
 
     getMoveId(move) {
@@ -222,9 +197,19 @@ class PcMoveHash {
     }
 }
 
-class Menu {
+class Menu {                                    //cd E:\itransition_course\task3
+    constructor(arr){                           //node task3v5.js rock scissors paper
+        this.items = arr;
+    }
     display() {
-        console.log('Select option:\n 1) Play\n 2) Help\n 3) Add parameter\n 4) Delete parameter\n 5) Add custom parameter\n 0) Exit\n');
+        let quest = 'Select move:\n';
+        let i = 0
+        for (i; i < gameIndex; i++) {
+            quest += ` ${i + 1}) ${this.items[i + 1]}\n`;
+        }
+        quest += ` ${i + 1}) Help\n`
+        quest += ` 0) Exit\n`
+        console.log(quest);
     }
 
     getAnswer(quest) {
@@ -241,94 +226,54 @@ class Menu {
 
 (async () => {
     const items = [];
-    const menu = new Menu();
+    
     const help = new Help(items);
     const game = new Game(items);
 
-    let questOption = 'Choose an option: ', questItem = 'Enter new item: ', questQuant = 'Enter the number of items: ';
+    const moves = process.argv.slice(2);
+    if (moves.length < 3) {
+        console.log('Insufficient number of items.');
+        process.exit(0);
+    }
+    gameIndex = moves.length;
+
+    let questOption = 'Choose an option: ';
     let a = 0;
 
     if (items.length == 0) {
         items.push('PC / User');
-        const n = await menu.getAnswer(questQuant);
-        for (let i = 1; i <= n; i++) {
-            const newItem = await menu.getAnswer(questItem);
-            items.push(newItem);
+        for (let i = 0; i < moves.length; i++){
+            items.push(moves[i]);
         }
         if (items.length >= 4) {
             help.changeTable();
         }
     }
 
+    const menu = new Menu(items);
+
     while (a == 0) {
 
         menu.display();
+
+        //console.log(`\ncheck gameIndex: ${gameIndex}\n`);
+        
         const option = await menu.getAnswer(questOption);
 
-        switch (option) {
-            case '1':
-                if (items.length < 4) {
-                    console.log("\nInsufficient number of items\n");
-                    break;
-                }
-                else {
-                    //gameRunning = true;
-                    await game.play();
-                    //gameRunning = false;
-                }
-                break;
-            case '2':
-                if (items.length < 4) {
-                    console.log("\nInsufficient number of items\n");
-                    break;
-                }
-                else {
-                    help.display();
-                    //help.updateTable();
-                }
-                break;
-            case '3':
-                if (gameIndex < (items.length - 1)) {
-                    gameIndex++;
-                    help.changeTable();
-                }
-                //else if ((items.length - 1) == 3) { help.changeTable(); }
-                else if ((items.length - 1) < 3) { console.log("\nInsufficient number of items\n"); }
-                else {
-                    console.log("\nMax number of parametrs reached\n");
-                    break;
-                }
-                break;
-            case '4':
-                if (gameIndex > 3) {
-                    gameIndex--;
-                    help.changeTable();
-                }
-                else {
-                    console.log("\nMin number of parametrs reached\n");
-                    break;
-                }
-                break;
-            case '5':
-                const newItem = await menu.getAnswer(questItem);
-                //let a = 0;
-                items.push(newItem);
-                if (items.length == 4) {
-                    help.changeTable();
-                }
-                //help.updateTable();
-                //gameIndex++;
-                break;
-            case '0':
-                console.log("Goodbye!\n");
-                a = 1;
-                //process.exit(1);
-                break;
-            default:
-                console.log("Unknown option\n");
-                break;
-        }
+        //console.log(`\ncheck option & items.length: ${option} & ${items.length}\n`)
 
+        if (option == 0){ 
+            console.log("Goodbye!\n");
+            rl.close();
+            process.exit(0);
+            }
+        else if (option == (items.length)) { help.display(); }
+        else if (option <= gameIndex && option >= 1) {
+            await game.play(items[option]);
+        }
+        else{
+            console.log("Unknown move, try again\n");
+        }   
     }
     rl.close();
     process.exit(0);
